@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>Learning WebGL  lesson 1</title>
+    <title>Hotspots</title>
     <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
     <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
     <script id="shader-fs" type="x-shader/x-fragment">
@@ -18,6 +18,8 @@
 		}
 		gl_FragColor = vec4(0, distn, 0, 1.0);
     }
+
+
     </script>
 
     <script id="shader-vs" type="x-shader/x-vertex">
@@ -27,6 +29,8 @@
         vertPos = vec4(aVertexPosition, 1);
         gl_Position = vec4(aVertexPosition, 1);
     }
+
+
 
     </script>
 
@@ -110,11 +114,11 @@
 
         var attenuation = 8;
         var multiplier = 0.8;
-		var hotSpotLoc = [];
-		for(var i = 0; i < 200; i++){
-			hotSpotLoc[2 * i] = Math.random();
-			hotSpotLoc[2 * i + 1] = Math.random();
-		}
+        var hotSpotLoc = [];
+        for (var i = 0; i < 200; i++) {
+            hotSpotLoc[2 * i] = Math.random();
+            hotSpotLoc[2 * i + 1] = Math.random();
+        }
 
         function setMatrixUniforms() {
             gl.uniform2fv(shaderProgram.hotSpotUniform, hotSpotLoc);
@@ -150,9 +154,7 @@
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
         }
 
-		var lastTime;
-		var frameCount = 0;
-		var elapsedTime = 0;
+
         function webGLStart() {
             var canvas = document.getElementById("lesson01-canvas");
             initGL(canvas);
@@ -161,40 +163,47 @@
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.enable(gl.DEPTH_TEST);
             drawScene();
-			
+            // fps stuff start
+            var lastTime = new Date().getTime();
+            var frameCount = 0;
+            var elapsedTime = 0;
+            // fps stuff end
             var loop = function () {
-				var lastTime = new Date().getTime();
-				for(var i = 0; i < 200; i++){
-					hotSpotLoc[2 * i + 1] += 0.001*i;
-					hotSpotLoc[2 * i] += 0.001*i;
-					if(hotSpotLoc[2 * i] > 1){
-                    hotSpotLoc[2 * i] = -1;
-					}
-					if(hotSpotLoc[2 * i] < -1){
-						hotSpotLoc[2 * i] = 1;
-					}
-					if(hotSpotLoc[2 * i + 1] > 1){
-						hotSpotLoc[2 * i + 1] = -1;
-					}
-					if(hotSpotLoc[2 * i + 1] < -1){
-						hotSpotLoc[2 * i + 1] = 1;
-					}
-				}
+                for (var i = 0; i < 200; i++) {
+                    hotSpotLoc[2 * i + 1] += 0.001 * i;
+                    hotSpotLoc[2 * i] += 0.001 * i;
+                    if (hotSpotLoc[2 * i] > 1) {
+                        hotSpotLoc[2 * i] = -1;
+                    }
+                    if (hotSpotLoc[2 * i] < -1) {
+                        hotSpotLoc[2 * i] = 1;
+                    }
+                    if (hotSpotLoc[2 * i + 1] > 1) {
+                        hotSpotLoc[2 * i + 1] = -1;
+                    }
+                    if (hotSpotLoc[2 * i + 1] < -1) {
+                        hotSpotLoc[2 * i + 1] = 1;
+                    }
+                }
                 gl.uniform2fv(shaderProgram.hotSpotUniform, hotSpotLoc);
-				gl.uniform1f(shaderProgram.attnUniform, attenuation);
-				gl.uniform1f(shaderProgram.multiplierUniform, multiplier);
+                gl.uniform1f(shaderProgram.attnUniform, attenuation);
+                gl.uniform1f(shaderProgram.multiplierUniform, multiplier);
                 gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
-				frameCount++;
-				elapsedTime = (new Date().getTime() - lastTime);
-				document.getElementById('fpsCount').innerHTML = elapsedTime;
-				/*if(elapsedTime >= 1000) {
-				   var fps = frameCount;
-				   frameCount = 0;
-				   elapsedTime -= 1000;
-				   document.getElementById('fpsCount').innerHTML = fps;
-				}*/
-				requestAnimationFrame(loop);
+                // fps stuff start
+                var now = new Date().getTime();
+                frameCount++;
+                elapsedTime += (now - lastTime);
+                console.log(elapsedTime);
+                lastTime = now;
+                if (elapsedTime >= 1000) {
+                    var fps = frameCount;
+                    frameCount = 0;
+                    elapsedTime -= 1000;
+                    document.getElementById('fpsCount').innerHTML = fps;
+                }
+                // fps stuff end
+                requestAnimationFrame(loop);
             };
             requestAnimationFrame(loop);
         }
@@ -207,7 +216,7 @@
 
 <body onload="webGLStart();" cz-shortcut-listen="true">
 
-<canvas id="lesson01-canvas" style="border: none;" width="700" height="700"></canvas>
+<canvas id="lesson01-canvas" style="border: none;" width="600" height="600"></canvas>
 <br>
 <span id="fpsCount"></span> fps
 </body>
