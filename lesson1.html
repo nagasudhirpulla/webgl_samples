@@ -9,16 +9,28 @@
     uniform vec2 hotspot[cnt];
     uniform float attn;
     uniform float multiplier;
+    uniform sampler2D uSampler;
     varying vec4 vertPos;
-	
+
+    const vec2 textureSize = vec2(15.0, 15.0);
+	vec4 getValueFromTexture(float index) {
+       float column = mod(index, textureSize.x);
+       float row    = floor(index / textureSize.x);
+       vec2 uv = vec2(
+          (column + 0.5) / textureSize.x,
+          (row    + 0.5) / textureSize.y);
+       return texture2D(uSampler, uv);
+    }
+
     void main(void) {		
 		float distn = 0.0;
-		for (int i = 0; i < cnt; i++) {
-			distn = distn + multiplier * exp(-attn*distance(vertPos.xy, hotspot[i].xy));
+		vec4 pointSample;
+		for (float i = 0.0; i < 200.0; i++) {
+		    pointSample = getValueFromTexture(i);
+            distn = distn + multiplier * exp(-attn*distance(vertPos.xy, pointSample.xy));
 		}
 		gl_FragColor = vec4(0, distn, 0, 1.0);
     }
-
 
     </script>
 
@@ -30,13 +42,12 @@
         gl_Position = vec4(aVertexPosition, 1);
     }
 
-
-
     </script>
 
     <script type="text/javascript">
-
         var gl;
+        var rgbTex;
+        var vertices;
         function initGL(canvas) {
             try {
                 gl = canvas.getContext("webgl");
@@ -131,23 +142,47 @@
         var squareVertexPositionBuffer;
 
         function initBuffers() {
-            squareVertexPositionBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
             vertices = [
                 1.0, 1.0, 0.0,
                 -1.0, 1.0, 0.0,
                 1.0, -1.0, 0.0,
                 -1.0, -1.0, 0.0
             ];
+            squareVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
             squareVertexPositionBuffer.itemSize = 3;
             squareVertexPositionBuffer.numItems = 4;
         }
 
+        function initTextures() {
+            var xyArray = [];
+            var xyLengthSqrt = Math.ceil(Math.sqrt(vertices.length));
+            for (var i = 0; i < hotSpotLoc.length; i++) {
+                xyArray.push(hotSpotLoc[i]);
+                xyArray.push(hotSpotLoc[i + 1]);
+                xyArray.push(0);
+                xyArray.push(0);
+            }
+
+            for (var i = 0; i < Math.pow(xyLengthSqrt, 2) - vertices.length; i++) {
+                xyArray.push(0);
+                xyArray.push(0);
+                xyArray.push(0);
+                xyArray.push(0);
+            }
+            rgbTex = textureFromPixelArray(gl, new Uint8Array(xyArray), gl.RGBA, xyLengthSqrt, xyLengthSqrt);
+        }
 
         function drawScene() {
             gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.bindTexture(gl.TEXTURE_2D, rgbTex);
+            gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
             gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
             gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
             setMatrixUniforms();
@@ -160,6 +195,7 @@
             initGL(canvas);
             initShaders();
             initBuffers();
+            initTextures();
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.enable(gl.DEPTH_TEST);
             drawScene();
@@ -185,6 +221,10 @@
                         hotSpotLoc[2 * i + 1] = 1;
                     }
                 }
+                initTextures();
+                gl.activeTexture(gl.TEXTURE0);
+                gl.generateMipmap(gl.TEXTURE_2D);
+                gl.bindTexture(gl.TEXTURE_2D, rgbTex);
                 gl.uniform2fv(shaderProgram.hotSpotUniform, hotSpotLoc);
                 gl.uniform1f(shaderProgram.attnUniform, attenuation);
                 gl.uniform1f(shaderProgram.multiplierUniform, multiplier);
@@ -194,7 +234,6 @@
                 var now = new Date().getTime();
                 frameCount++;
                 elapsedTime += (now - lastTime);
-                console.log(elapsedTime);
                 lastTime = now;
                 if (elapsedTime >= 1000) {
                     var fps = frameCount;
@@ -208,6 +247,14 @@
             requestAnimationFrame(loop);
         }
 
+        function textureFromPixelArray(gl, dataArray, type, width, height) {
+            var dataTypedArray = new Uint8Array(dataArray); // Don't need to do this if the data is already in a typed array
+            var texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, type, width, height, 0, type, gl.UNSIGNED_BYTE, dataTypedArray);
+            // Other texture setup here, like filter modes and mipmap generation
+            return texture;
+        }
 
     </script>
 
